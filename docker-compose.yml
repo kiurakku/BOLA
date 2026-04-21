@@ -1,0 +1,67 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bola}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bola_dev_only}
+      POSTGRES_DB: ${POSTGRES_DB:-bola}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bola} -d ${POSTGRES_DB:-bola}"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+
+  auth:
+    build: ./services/auth
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-bola}:${POSTGRES_PASSWORD:-bola_dev_only}@postgres:5432/${POSTGRES_DB:-bola}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      JWT_EXPIRE_MINUTES: "60"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8000"
+
+  reports:
+    build: ./services/reports
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-bola}:${POSTGRES_PASSWORD:-bola_dev_only}@postgres:5432/${POSTGRES_DB:-bola}
+      GATEWAY_INTERNAL_TOKEN: ${GATEWAY_INTERNAL_TOKEN:?set GATEWAY_INTERNAL_TOKEN}
+      REPORTS_AUTHZ_MODE: ${REPORTS_AUTHZ_MODE:-vulnerable}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8000"
+
+  gateway:
+    build: ./gateway
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      GATEWAY_INTERNAL_TOKEN: ${GATEWAY_INTERNAL_TOKEN:?set GATEWAY_INTERNAL_TOKEN}
+      AUTH_UPSTREAM: http://auth:8000
+      REPORTS_UPSTREAM: http://reports:8000
+      PORT: "8080"
+    # Прямий доступ до API з хоста (скрипти); при конфлікті портів змініть ліве число
+    ports:
+      - "23456:8080"
+    depends_on:
+      - auth
+      - reports
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE: ""
+    # Якщо 3000 зайнятий на хості — змініть ліве число (наприклад 3005)
+    ports:
+      - "3005:80"
+    depends_on:
+      - gateway
+
+volumes:
+  pgdata:
