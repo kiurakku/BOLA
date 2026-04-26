@@ -9,6 +9,10 @@ on:
 jobs:
   integration:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        authz_mode: [vulnerable, secure]
     steps:
       - uses: actions/checkout@v4
 
@@ -20,11 +24,16 @@ jobs:
           POSTGRES_USER=bola
           POSTGRES_PASSWORD=bola_dev_only
           POSTGRES_DB=bola
-          REPORTS_AUTHZ_MODE=vulnerable
+          REPORTS_AUTHZ_MODE=${{ matrix.authz_mode }}
           EOF
 
-      - name: Docker compose up
-        run: docker compose up -d --build
+      - name: Docker compose up (${{ matrix.authz_mode }})
+        run: |
+          if [ "${{ matrix.authz_mode }}" = "secure" ]; then
+            docker compose -f docker-compose.yml -f docker-compose.secure.yml up -d --build
+          else
+            docker compose up -d --build
+          fi
 
       - name: Wait for gateway
         run: |
