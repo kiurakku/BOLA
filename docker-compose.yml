@@ -1,3 +1,18 @@
+# BOLA Lab — автономний стенд (gateway, auth, reports, web, PostgreSQL).
+# Запуск: docker compose up --build
+# Веб: http://localhost:3005 · Gateway: http://localhost:23456
+
+name: bola-lab
+
+networks:
+  bola_internal:
+    internal: true
+  edge:
+    driver: bridge
+
+volumes:
+  bola_pg:
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -6,7 +21,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bola_dev_only}
       POSTGRES_DB: ${POSTGRES_DB:-bola}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - bola_pg:/var/lib/postgresql/data
+    networks: [bola_internal]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bola} -d ${POSTGRES_DB:-bola}"]
       interval: 3s
@@ -22,8 +38,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    expose:
-      - "8000"
+    networks: [bola_internal]
 
   reports:
     build: ./services/reports
@@ -34,8 +49,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    expose:
-      - "8000"
+    networks: [bola_internal]
 
   gateway:
     build: ./gateway
@@ -45,23 +59,21 @@ services:
       AUTH_UPSTREAM: http://auth:8000
       REPORTS_UPSTREAM: http://reports:8000
       PORT: "8080"
-    # Прямий доступ до API з хоста (скрипти); при конфлікті портів змініть ліве число
+      REPORTS_AUTHZ_MODE: ${REPORTS_AUTHZ_MODE:-vulnerable}
     ports:
       - "23456:8080"
     depends_on:
       - auth
       - reports
+    networks: [bola_internal, edge]
 
   web:
     build:
       context: ./frontend
       args:
         VITE_API_BASE: ""
-    # Якщо 3000 зайнятий на хості — змініть ліве число (наприклад 3005)
     ports:
       - "3005:80"
+    networks: [edge]
     depends_on:
       - gateway
-
-volumes:
-  pgdata:

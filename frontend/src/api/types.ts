@@ -8,6 +8,7 @@ export interface UserMe {
   username: string;
   org_id: number;
   display_name: string;
+  role: string;
 }
 
 export interface ReportListItem {

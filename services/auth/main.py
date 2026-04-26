@@ -43,6 +43,8 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     org_id: Mapped[int] = mapped_column(index=True)
     display_name: Mapped[str] = mapped_column(String(128), default="")
+    # viewer | admin — для демо BFLA (рівень функцій, не лише org)
+    role: Mapped[str] = mapped_column(String(32), default="viewer")
 
 
 app = FastAPI(title="BOLA Lab — Auth", version="1.0.0")
@@ -58,19 +60,21 @@ class UserPublic(BaseModel):
     username: str
     org_id: int
     display_name: str
+    role: str
 
 
 def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
 
 
-def create_token(*, username: str, org_id: int, sub: str) -> tuple[str, int]:
+def create_token(*, username: str, org_id: int, sub: str, role: str) -> tuple[str, int]:
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_expire_minutes)
     exp_ts = int(expire.timestamp())
     payload = {
         "sub": sub,
         "username": username,
         "org_id": org_id,
+        "role": role,
         "exp": exp_ts,
         "iat": int(datetime.now(timezone.utc).timestamp()),
     }
@@ -89,24 +93,35 @@ async def init_db() -> None:
         await conn.run_sync(Base.metadata.create_all)
 
     async with SessionLocal() as session:
-        existing = await session.scalar(select(User).where(User.username == "alice"))
-        if existing:
-            return
-        users = [
-            User(
-                username="alice",
-                password_hash=pwd_context.hash("K7m!pQ2$vL9#"),
-                org_id=1,
-                display_name="Alice (Org Alpha)",
-            ),
-            User(
-                username="bob",
-                password_hash=pwd_context.hash("R4n@xY8wZ1%"),
-                org_id=2,
-                display_name="Bob (Org Beta)",
-            ),
-        ]
-        session.add_all(users)
+        if not await session.scalar(select(User).where(User.username == "alice")):
+            session.add_all(
+                [
+                    User(
+                        username="alice",
+                        password_hash=pwd_context.hash("K7m!pQ2$vL9#"),
+                        org_id=1,
+                        display_name="Alice (Org Alpha)",
+                        role="viewer",
+                    ),
+                    User(
+                        username="bob",
+                        password_hash=pwd_context.hash("R4n@xY8wZ1%"),
+                        org_id=2,
+                        display_name="Bob (Org Beta)",
+                        role="viewer",
+                    ),
+                ]
+            )
+        if not await session.scalar(select(User).where(User.username == "dana")):
+            session.add(
+                User(
+                    username="dana",
+                    password_hash=pwd_context.hash("Adm!n#9zXq2"),
+                    org_id=1,
+                    display_name="Dana (Org Alpha, admin)",
+                    role="admin",
+                )
+            )
         await session.commit()
 
 
@@ -133,7 +148,12 @@ async def login(
             detail="Невірні облікові дані",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    token, ttl = create_token(username=user.username, org_id=user.org_id, sub=str(user.id))
+    token, ttl = create_token(
+        username=user.username,
+        org_id=user.org_id,
+        sub=str(user.id),
+        role=user.role,
+    )
     return TokenOut(access_token=token, expires_in=ttl)
 
 
@@ -147,4 +167,9 @@ async def me(
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Користувача не знайдено")
-    return UserPublic(username=user.username, org_id=user.org_id, display_name=user.display_name)
+    return UserPublic(
+        username=user.username,
+        org_id=user.org_id,
+        display_name=user.display_name,
+        role=user.role,
+    )

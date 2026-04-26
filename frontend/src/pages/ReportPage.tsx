@@ -1,16 +1,21 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { apiFetch, parseJson } from "../api/client";
 import type { ReportDetail } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
+import { useLabMode } from "../hooks/useLabMode";
 
 export function ReportPage() {
   const { reportId } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
+  const { mode: labMode } = useLabMode();
   const [report, setReport] = useState<ReportDetail | null>(null);
   const [status, setStatus] = useState<number | null>(null);
   const [errorBody, setErrorBody] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteErr, setDeleteErr] = useState<string | null>(null);
 
   const idNum = Number(reportId);
 
@@ -57,17 +62,77 @@ export function ReportPage() {
     report && user && report.org_id !== user.org_id
       ? {
           title: "Порушення об’єктної авторизації (BOLA)",
-          text: "Ви переглядаєте звіт іншої організації: JWT містить ваш org_id, але API повернув об’єкт з іншим org_id. У продакшені так бути не повинно — увімкніть REPORTS_AUTHZ_MODE=secure.",
+          text: "Ви переглядаєте звіт іншої організації: JWT містить ваш org_id, але API повернув об’єкт з іншим org_id. У продакшені так бути не повинно — увімкніть secure-режим.",
         }
       : null;
+
+  const showDelete =
+    report &&
+    user &&
+    report.org_id === user.org_id &&
+    (labMode === "vulnerable" || user.role === "admin");
+
+  async function onDelete() {
+    if (!report || !user) {
+      return;
+    }
+    if (!window.confirm(`Видалити звіт #${report.id}? Демо BFLA: у vulnerable viewer може видаляти.`)) {
+      return;
+    }
+    setDeleting(true);
+    setDeleteErr(null);
+    try {
+      const res = await apiFetch(`/api/reports/${report.id}`, { method: "DELETE" });
+      if (res.status === 204) {
+        navigate("/lab");
+        return;
+      }
+      let detail = res.statusText;
+      try {
+        const j = (await res.json()) as { detail?: string };
+        if (typeof j.detail === "string") {
+          detail = j.detail;
+        }
+      } catch {
+        /* ignore */
+      }
+      setDeleteErr(`${res.status}: ${detail}`);
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   return (
     <div className="grid narrow">
       <div className="toolbar">
-        <Link className="btn ghost" to="/">
+        <Link className="btn ghost" to="/lab">
           ← До списку
         </Link>
+        {showDelete ? (
+          <button
+            type="button"
+            className="btn danger-outline"
+            disabled={deleting}
+            onClick={() => void onDelete()}
+          >
+            {deleting ? "Видалення…" : labMode === "vulnerable" ? "Видалити (демо BFLA)" : "Видалити"}
+          </button>
+        ) : null}
       </div>
+
+      {deleteErr ? (
+        <div className="alert danger" role="alert">
+          Не вдалося видалити: {deleteErr}
+        </div>
+      ) : null}
+
+      {labMode === "vulnerable" ? (
+        <div className="alert muted">
+          Режим <code>vulnerable</code>: для звітів вашої org користувач з роллю{" "}
+          <code>viewer</code> може викликати <code>DELETE</code> — поламана авторизація на рівні
+          функції (BFLA). У <code>secure</code> для видалення потрібна роль <code>admin</code>.
+        </div>
+      ) : null}
 
       {loading ? <div className="card muted">Завантаження звіту…</div> : null}
 

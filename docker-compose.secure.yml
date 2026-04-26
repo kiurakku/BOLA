@@ -1,7 +1,8 @@
-# Підключення: docker compose -f docker-compose.yml -f docker-compose.secure.yml up --build
-# Увімкнено перевірку org_id у сервісі звітів (закриття BOLA на рівні бекенду після коректного JWT на gateway).
-
+# З BOLA/: docker compose -f docker-compose.yml -f docker-compose.secure.yml up --build
 services:
   reports:
+    environment:
+      REPORTS_AUTHZ_MODE: secure
+  gateway:
     environment:
       REPORTS_AUTHZ_MODE: secure

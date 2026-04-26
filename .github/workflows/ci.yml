@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare .env
+        run: |
+          cat > .env << 'EOF'
+          JWT_SECRET=ci-jwt-secret-min-32-chars-for-test-xx
+          GATEWAY_INTERNAL_TOKEN=ci-gateway-internal-token-secret
+          POSTGRES_USER=bola
+          POSTGRES_PASSWORD=bola_dev_only
+          POSTGRES_DB=bola
+          REPORTS_AUTHZ_MODE=vulnerable
+          EOF
+
+      - name: Docker compose up
+        run: docker compose up -d --build
+
+      - name: Wait for gateway
+        run: |
+          for i in $(seq 1 40); do
+            curl -fsS http://127.0.0.1:23456/health && exit 0
+            sleep 2
+          done
+          exit 1
+
+      - name: Pytest
+        env:
+          API_BASE: http://127.0.0.1:23456
+        run: |
+          pip install -r tests/requirements.txt
+          pytest tests -v --tb=short
+
+      - name: Docker compose down
+        if: always()
+        run: docker compose down -v

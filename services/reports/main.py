@@ -86,6 +86,14 @@ def require_trusted_org(
         raise HTTPException(status_code=400, detail="Некоректний X-Trusted-Org-Id")
 
 
+def require_trusted_role(
+    x_trusted_role: Annotated[str | None, Header()] = None,
+) -> str:
+    if not x_trusted_role:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Відсутня роль у довірених заголовках")
+    return x_trusted_role.strip().lower()
+
+
 async def init_db() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -189,3 +197,37 @@ async def get_report(
         summary=report.summary,
         remediation=report.remediation,
     )
+
+
+@app.delete("/reports/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_report(
+    report_id: int,
+    _: Annotated[None, Depends(require_gateway)],
+    trusted_org: Annotated[int, Depends(require_trusted_org)],
+    trusted_role: Annotated[str, Depends(require_trusted_role)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> None:
+    """
+    Демо BFLA: у vulnerable перевіряється лише належність звіту до org (без ролі).
+    У secure — потрібна роль admin і та сама org.
+    """
+    result = await session.execute(select(Report).where(Report.id == report_id))
+    report = result.scalar_one_or_none()
+    if not report:
+        raise HTTPException(status_code=404, detail="Звіт не знайдено")
+
+    if report.org_id != trusted_org:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Доступ до об'єкта заборонено (інша організація)",
+        )
+
+    if settings.reports_authz_mode == "secure":
+        if trusted_role != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Лише адміністратор може видаляти звіти (BFLA закрито)",
+            )
+    # vulnerable: org співпала — viewer може видалити (поламана авторизація на рівні функції)
+    await session.delete(report)
+    await session.commit()

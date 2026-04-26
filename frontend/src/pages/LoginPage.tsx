@@ -10,7 +10,7 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false);
 
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/lab" replace />;
   }
 
   async function onSubmit(e: FormEvent) {
@@ -62,8 +62,9 @@ export function LoginPage() {
           {busy ? "Вхід…" : "Увійти"}
         </button>
         <p className="hint">
-          Тестові облікові записи (див. README): <code>alice</code> / Org Alpha та <code>bob</code>{" "}
-          / Org Beta — паролі лише в документації репозиторію, не для продакшену.
+          Облікові записи: <code>alice</code> (viewer, org 1), <code>bob</code> (viewer, org 2),{" "}
+          <code>dana</code> (admin, org 1) — паролі в README репозиторію, лише для локального
+          навчання.
         </p>
       </form>
     </div>

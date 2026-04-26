@@ -3,10 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { apiFetch, parseJson } from "../api/client";
 import type { ReportListItem } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
+import { useLabMode } from "../hooks/useLabMode";
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const { mode: labMode } = useLabMode();
   const [reports, setReports] = useState<ReportListItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [manualId, setManualId] = useState("201");
@@ -54,23 +56,23 @@ export function DashboardPage() {
           <h1>Звіти вашої організації</h1>
           <p className="muted">
             Ви увійшли як <strong>{user?.display_name}</strong> (org_id:{" "}
-            <span className="mono">{user?.org_id}</span>). Список обмежений вашою org — це очікувана
+            <span className="mono">{user?.org_id}</span>, роль{" "}
+            <span className="mono">{user?.role}</span>). Список обмежений вашою org — це очікувана
             поведінка.
           </p>
         </div>
-        <button type="button" className="btn ghost" onClick={() => logout()}>
-          Вийти
-        </button>
       </div>
 
-      <section className="card lab-panel">
-        <h2>Сценарій атаки (IDOR)</h2>
-        <p>
-          Зловмисник з автентифікованою сесією може підбирати числові ідентифікатори в URL, навіть
-          якщо «чужі» звіти не показані в списку. Введіть ID і перейдіть на сторінку деталей — у
-          режимі <code>REPORTS_AUTHZ_MODE=vulnerable</code> сервіс може віддати чужий об’єкт.
-        </p>
-        <form className="inline-form" onSubmit={onJump}>
+      {labMode === "vulnerable" ? (
+        <section className="card lab-panel">
+          <h2>Сценарій атаки (IDOR)</h2>
+          <p>
+            Зловмисник з автентифікованою сесією може підбирати числові ідентифікатори в URL, навіть
+            якщо «чужі» звіти не показані в списку. Введіть ID і перейдіть на сторінку деталей — у
+            режимі <code>vulnerable</code> сервіс може віддати чужий об’єкт (див.{" "}
+            <code>GET /api/mode</code> та заголовок <code>X-Auth-Mode</code>).
+          </p>
+          <form className="inline-form" onSubmit={onJump}>
           <label>
             <span className="sr-only">ID звіту</span>
             <input
@@ -85,7 +87,17 @@ export function DashboardPage() {
             Відкрити /reports/[id]
           </button>
         </form>
-      </section>
+        </section>
+      ) : labMode === "secure" ? (
+        <section className="card lab-panel lab-panel-secure">
+          <h2>Режим secure</h2>
+          <p className="muted">
+            Бекенд звітів звіряє власника об’єкта з довіреним <code>org_id</code> від gateway.
+            Сценарій IDOR для демонстрації вимкнено; перемкніть compose на{" "}
+            <code>docker-compose.secure.yml</code>, щоб порівняти поведінку в іншому середовищі.
+          </p>
+        </section>
+      ) : null}
 
       <div className="row">
         <label className="field grow">
