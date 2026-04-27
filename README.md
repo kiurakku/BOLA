@@ -31,6 +31,24 @@ engineering, software, automation
 - Continuous integration compatibility through GitHub Actions.
 - Documentation-first approach for onboarding and contribution speed.
 
+## How to Install and Use
+
+**Frontend (Vite + React lab UI):**
+
+```bash
+git clone https://github.com/kiurakku/BOLA.git
+cd BOLA/frontend
+npm ci
+npm run dev
+```
+
+Open the URL printed in the terminal (default Vite dev server). Use **`npm run build`** for a production bundle.
+
+## Proof of Concept (PoC)
+
+- Run the lab UI, exercise **BOLA/IDOR** flows against the bundled or configured API (see repo docs for scenario IDs).
+- Capture a **short screen recording or GIF**: request/response showing broken object authorization vs fixed check — attach to issues or docs when demoing.
+
 ## Tech Context
 
 - **Primary language:** TypeScript
@@ -41,13 +59,7 @@ engineering, software, automation
 
 ## Quick Start
 
-```bash
-git clone https://github.com/kiurakku/BOLA.git
-cd BOLA
-# Install dependencies (project-specific)
-# Build or run tests
-# Start the project
-```
+See **How to Install and Use** (`cd BOLA/frontend && npm ci && npm run dev`).
 
 ## Configuration
 
