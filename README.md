@@ -1,148 +1,93 @@
-# BOLA Lab (OWASP API Security)
+# BOLA
 
-[![CI](https://github.com/kiurakku/BOLA/actions/workflows/ci.yml/badge.svg)](https://github.com/kiurakku/BOLA/actions/workflows/ci.yml)
-[![Docker Compose](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![Repo Visibility](https://img.shields.io/badge/visibility-Public-blue)
+![Repository Type](https://img.shields.io/badge/type-Source-lightgrey)
+![Last Commit](https://img.shields.io/github/last-commit/kiurakku/BOLA)
+![Issues](https://img.shields.io/github/issues/kiurakku/BOLA)
+![License](https://img.shields.io/github/license/kiurakku/BOLA)
 
-Hands-on security lab for Broken Object Level Authorization (BOLA/IDOR) and Broken Function Level Authorization (BFLA).
+Hands-on OWASP API security lab for BOLA/IDOR and authorization testing.
 
-This repository ships a full runnable stack: React UI, API Gateway, auth service, reports service, PostgreSQL, test suite, and CI matrix for vulnerable vs secure behavior.
+## Project Overview
 
-<p align="center">
-  <img src="docs/images/bola-cover.jpg" alt="BOLA lab visual" width="720" />
-</p>
+$(@{defaultBranchRef=; description=Hands-on OWASP API security lab for BOLA/IDOR and authorization testing.; isFork=False; isPrivate=False; licenseInfo=; name=BOLA; primaryLanguage=; repositoryTopics=System.Object[]; visibility=PUBLIC}.name) is maintained as a **TypeScript** project focused on reliable engineering practices, readable architecture, and practical delivery.
 
-## Position in the 3-project stack
+## Tags
 
-- **BOLA**: controlled security training environment.
-- [FastLM-API](https://github.com/kiurakku/FastLM-API): practical LLM gateway implementation.
-- [Hookify](https://github.com/kiurakku/Hookify): plugin/hook framework used by FastLM.
+engineering, software, automation
 
-## What you can demonstrate
+## Why This Project
 
-- **BOLA (IDOR)** on `GET /api/reports/{id}`:
-  - `vulnerable`: object is returned by ID without org ownership check.
-  - `secure`: object is returned only if token org matches report org.
-- **BFLA** on `DELETE /api/reports/{id}`:
-  - `vulnerable`: any user from same org can delete.
-  - `secure`: only `admin` role can delete.
+- Demonstrates production-minded implementation and maintainability.
+- Captures reusable patterns that can be applied across other systems.
+- Serves as a practical reference for development, operations, and quality workflows.
 
-## Architecture overview
+## Key Capabilities
 
-```text
-Browser (React)
-  -> Nginx web (port 3005)
-     -> /api/* -> Gateway (port 23456)
-         -> Auth service    (token issuance + /auth/me)
-         -> Reports service (report list/detail/delete)
-         -> PostgreSQL
+- Clear repository structure for iterative development.
+- Standardized development lifecycle: setup, build, test, and deployment flow.
+- Continuous integration compatibility through GitHub Actions.
+- Documentation-first approach for onboarding and contribution speed.
 
-Networks:
-  edge          : web <-> gateway
-  bola_internal : gateway <-> auth/reports/postgres (internal-only)
-```
+## Tech Context
 
-## Tech stack
+- **Primary language:** TypeScript
+- **Visibility:** Public
+- **Repository role:** Source
+- **Default branch:** main
+- **License:** MIT License
 
-- **Frontend**: React 18 + TypeScript + Vite.
-- **Gateway**: FastAPI + JWT verification + `slowapi` rate limits.
-- **Auth service**: FastAPI + JWT issuing (`HS256`) + bcrypt password verification.
-- **Reports service**: FastAPI + SQLAlchemy async + mode-based authorization checks.
-- **Runtime**: Docker Compose + PostgreSQL 16.
+## Quick Start
 
-## Run locally
-
-```bash
+`ash
 git clone https://github.com/kiurakku/BOLA.git
 cd BOLA
-cp .env.example .env
-# set JWT_SECRET and GATEWAY_INTERNAL_TOKEN
-docker compose up --build
-```
+# Install dependencies (project-specific)
+# Build or run tests
+# Start the project
+`
 
-- UI: `http://localhost:3005`
-- API Gateway: `http://localhost:23456`
+## Configuration
 
-### Secure mode
+- Use environment variables for secrets and environment-specific values.
+- Keep local configuration in non-committed files (for example: .env.local).
+- Prefer explicit defaults and fail-fast validation for required settings.
 
-```bash
-docker compose -f docker-compose.yml -f docker-compose.secure.yml up --build
-```
+## Testing
 
-## Demo accounts
+- Run unit/integration checks before each push.
+- Keep tests deterministic and scoped to behavior.
+- Add regression tests for every fixed defect.
 
-| Username | Password | org_id | role |
-|---|---|---|---|
-| `alice` | `K7m!pQ2$vL9#` | 1 | viewer |
-| `bob` | `R4n@xY8wZ1%` | 2 | viewer |
-| `dana` | `Adm!n#9zXq2` | 1 | admin |
+## CI/CD
 
-Report IDs:
+This repository is designed to work with GitHub Actions pipelines for:
 
-- org 1: `101`, `102`
-- org 2: `201`, `202`
+- Build validation
+- Test execution
+- Baseline repository health checks
 
-## Attack demo script
+## Roadmap
 
-Run:
+- Strengthen automated quality gates and security checks.
+- Expand coverage of integration and end-to-end scenarios.
+- Improve observability, performance benchmarks, and release discipline.
 
-```bash
-python scripts/bola_attack_demo.py
-```
+## Contribution Guidelines
 
-Expected output pattern:
+- Open an issue describing the change or bug.
+- Submit focused pull requests with clear scope.
+- Include test evidence for behavioral changes.
 
-- `vulnerable` mode: `GET /api/reports/201 -> 200` for `alice` (org 1) and response contains `"org_id": 2`.
-- `secure` mode: `GET /api/reports/201 -> 403`.
+## Security Notes
 
-## API endpoints (gateway)
+- Do not commit credentials, tokens, or private keys.
+- Report sensitive findings privately via maintainer contact channels.
 
-| Method | Path | Notes |
-|---|---|---|
-| `GET` | `/health` | Gateway health |
-| `GET` | `/api/mode` | Public mode indicator (`vulnerable` / `secure`) |
-| `POST` | `/api/auth/login` | Login and receive JWT |
-| `GET` | `/api/auth/me` | JWT-protected user profile |
-| `GET` | `/api/reports` | JWT-protected report list (scoped by org) |
-| `GET` | `/api/reports/{id}` | BOLA behavior depends on mode |
-| `DELETE` | `/api/reports/{id}` | BFLA behavior depends on mode |
+## License
 
-## Tests
+This project is distributed under **MIT License**.
 
-### Local integration tests
+## Maintainer
 
-```bash
-pip install -r tests/requirements.txt
-API_BASE=http://127.0.0.1:23456 pytest tests -v --tb=short
-```
-
-### CI behavior
-
-GitHub Actions matrix runs tests in **both** modes:
-
-- `REPORTS_AUTHZ_MODE=vulnerable`
-- `REPORTS_AUTHZ_MODE=secure`
-
-This ensures regression visibility for educational vulnerable flow and hardened flow.
-
-## Repository structure
-
-```text
-gateway/             # JWT verification, upstream proxy, rate limits
-services/auth/       # login + token issuance + profile endpoint
-services/reports/    # report CRUD with mode-specific auth checks
-frontend/            # React lab UI
-tests/               # end-to-end API behavior tests
-scripts/             # quick attack demonstration scripts
-```
-
-## Security disclaimer
-
-This project intentionally includes insecure behavior in `vulnerable` mode for learning and demonstrations.
-Never deploy vulnerable mode in production.
-
----
-
-Recommended GitHub topics:
-
-`security`, `owasp`, `api-security`, `bola`, `idor`, `fastapi`, `docker`, `education`
+Maintained by **Kiurakku** as part of a portfolio of software engineering, security engineering, and platform projects.
