@@ -8,6 +8,10 @@ Hands-on security lab for Broken Object Level Authorization (BOLA/IDOR) and Brok
 
 This repository ships a full runnable stack: React UI, API Gateway, auth service, reports service, PostgreSQL, test suite, and CI matrix for vulnerable vs secure behavior.
 
+<p align="center">
+  <img src="docs/images/bola-cover.jpg" alt="BOLA lab visual" width="720" />
+</p>
+
 ## Position in the 3-project stack
 
 - **BOLA**: controlled security training environment.
